@@ -1,0 +1,66 @@
+services:
+  # ─────────────────────────────────────────
+  # Service 1: Flask API + Admin Panel (React)
+  # ─────────────────────────────────────────
+  - type: web
+    name: auth-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt && mkdir -p api/static/admin && cp -r admin-panel/dist/. api/static/admin/
+    startCommand: gunicorn --timeout 600 --workers 1 --threads 8 --worker-class gthread main:app
+    envVars:
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD_HASH
+        value: "$2b$12$g2WZxILhYpt4aBQpa8z8r.TvlEIIdQ5Sg/PhHcFL23SlePtKNCJue"
+      - key: SECRET_KEY
+        value: "844a97d55af1b099b20c09596d6215cb47964d5428b24378418ffff680cde05a"
+      - key: SESSION_SECRET
+        value: "7eb690da727a580d4a53f9ed0b29dbb430f3c350fb734e2cda47fe6b60070665"
+      - key: HMAC_SECRET
+        value: "07e18df12dfed534c83a949f3b63de76c02588125b2f3d4f316e7d5e82f2bba6"
+      - key: ENCRYPTION_KEY
+        value: "y0lgvtZs5Di-Uqo1jCE-uBfMh2BURLOn9vhj7XchDIY="
+      - key: STORE_API_KEY
+        value: "e69dda75f0dddf94a79b0e2456aabe28fe0845e5aff661d5ac2e012919ff1d49"
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: auth-db
+          property: connectionString
+
+  # ─────────────────────────────────────────
+  # Service 2: Store (Flask backend + React frontend via Docker)
+  # ─────────────────────────────────────────
+  - type: web
+    name: store
+    env: docker
+    region: oregon
+    plan: free
+    rootDir: store
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SECRET_KEY
+        value: "844a97d55af1b099b20c09596d6215cb47964d5428b24378418ffff680cde05a"
+      - key: STORE_API_KEY
+        value: "e69dda75f0dddf94a79b0e2456aabe28fe0845e5aff661d5ac2e012919ff1d49"
+      - key: VERIFY_API_KEY
+        value: "e9de7f761716504f2127d66a4f17c06f8bd493afc366e0dcc70adecd926624aa"
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD_HASH
+        value: "$2b$12$g2WZxILhYpt4aBQpa8z8r.TvlEIIdQ5Sg/PhHcFL23SlePtKNCJue"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: auth-db
+          property: connectionString
+
+# ─────────────────────────────────────────
+# Shared PostgreSQL Database
+# ─────────────────────────────────────────
+databases:
+  - name: auth-db
+    databaseName: authdb
+    plan: free
