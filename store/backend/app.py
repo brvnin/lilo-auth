@@ -778,12 +778,8 @@ def admin_ip_check():
     """Check if current IP is allowed to access admin panel (does NOT reveal whitelist)"""
     client_ip = get_client_ip()
     allowed_ips = os.environ.get('ADMIN_ALLOWED_IPS', '')
-    
-    if not allowed_ips:
-        is_allowed = True
-    else:
-        allowed_list = [ip.strip() for ip in allowed_ips.split(',') if ip.strip()]
-        is_allowed = client_ip in allowed_list
+    allowed_list = [ip.strip() for ip in allowed_ips.split(',') if ip.strip()] if allowed_ips else []
+    is_allowed = client_ip in allowed_list
     
     # SECURITY: Only return whether IP is allowed, NOT the whitelist itself
     # This prevents attackers from discovering whitelisted IPs
