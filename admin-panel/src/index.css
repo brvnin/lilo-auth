@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Outfit", sans-serif;
+  --font-mono: "Fira Code", monospace;
+
+  /* Premium Dark Theme Palette */
+  --color-background: #060813;
+  --color-foreground: #f8fafc;
+
+  --color-primary: #6366f1;
+  /* Indigo */
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #8b5cf6;
+  /* Violet */
+  --color-secondary-foreground: #ffffff;
+
+  --color-accent: #3b82f6;
+  /* Blue */
+  --color-accent-foreground: #ffffff;
+
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+
+  --color-card: rgba(15, 23, 42, 0.7);
+  --color-card-foreground: #f8fafc;
+
+  --color-border: rgba(99, 102, 241, 0.1);
+
+  /* Custom Glassmorphism Effects */
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+
+  --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 4px 15px -5px rgba(99, 102, 241, 0.3);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card backdrop-blur-xl border border-border rounded-xl shadow-premium;
+  }
+
+  .glass-input {
+    @apply bg-white/5 border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all outline-none;
+  }
+
+  .premium-button {
+    @apply relative overflow-hidden bg-gradient-to-r from-primary to-secondary text-white px-6 py-2 rounded-lg font-semibold shadow-lg hover:shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all;
+  }
+
+  .shimmer {
+    @apply relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent before:animate-[shimmer_2s_infinite];
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

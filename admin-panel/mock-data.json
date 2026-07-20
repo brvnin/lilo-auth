@@ -1,0 +1,11 @@
+[
+    {
+        "type": "admin_session",
+        "expires_at": "datetime"
+    },
+    {
+        "type": "User",
+        "id": 1,
+        "username": "admin"
+    }
+]
