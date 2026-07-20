@@ -203,6 +203,13 @@ with app.app_context():
     except Exception as e:
         print(f"Schema update skipped (normal if new DB): {e}")
 
+    # Create 'store' schema if using PostgreSQL (SQLite ignores schemas)
+    try:
+        db.session.execute(text('CREATE SCHEMA IF NOT EXISTS store'))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     db.create_all()
     # Create default admin if not exists
     if not StoreUser.query.filter_by(username='admin').first():
