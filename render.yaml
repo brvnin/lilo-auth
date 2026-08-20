@@ -27,9 +27,18 @@ services:
       - key: ALLOWED_ORIGINS
         value: "*"
       - key: DATABASE_URL
-        fromDatabase:
-          name: auth-db
-          property: connectionString
+        sync: false
+
+  # ─────────────────────────────────────────
+  # Scheduled job: keep the API alive
+  # ─────────────────────────────────────────
+  - type: cron
+    name: auth-keepalive
+    env: bash
+    region: oregon
+    plan: free
+    schedule: "*/5 * * * *"
+    command: "curl -fsS https://auth-api.onrender.com/api/healthz >/dev/null 2>&1"
 
   # ─────────────────────────────────────────
   # Service 2: Store (Flask backend + React frontend via Docker)
@@ -53,14 +62,4 @@ services:
       - key: ADMIN_PASSWORD_HASH
         value: "$2b$12$g2WZxILhYpt4aBQpa8z8r.TvlEIIdQ5Sg/PhHcFL23SlePtKNCJue"
       - key: DATABASE_URL
-        fromDatabase:
-          name: auth-db
-          property: connectionString
-
-# ─────────────────────────────────────────
-# Shared PostgreSQL Database
-# ─────────────────────────────────────────
-databases:
-  - name: auth-db
-    databaseName: authdb
-    plan: free
+        sync: false

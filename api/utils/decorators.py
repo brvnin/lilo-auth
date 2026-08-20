@@ -47,8 +47,8 @@ def enforce_loader_security():
     if request.path.startswith('/api/admin') or request.path.startswith('/admin') or request.path == '/':
         return None
     
-    # Skip health check endpoint ONLY with proper authentication
-    if request.path == '/api/health':
+    # Skip public health endpoints used by uptime monitors and cronjobs
+    if request.path in ('/api/health', '/api/healthz'):
         # Check for secret header from Store Backend
         health_secret = request.headers.get('X-Health-Secret')
         expected_secret = Config.HMAC_SECRET  # Use HMAC secret or separate env var if available

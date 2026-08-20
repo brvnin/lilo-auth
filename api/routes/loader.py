@@ -186,6 +186,18 @@ def get_loader_config():
         'config': config_dict
     })
 
+@loader_bp.route('/api/healthz', methods=['GET'])
+def healthz_check():
+    """Lightweight public endpoint for cronjobs and uptime monitors."""
+    from datetime import datetime
+
+    return jsonify({
+        'status': 'ok',
+        'service': 'loader-api',
+        'timestamp': datetime.utcnow().isoformat()
+    })
+
+
 @loader_bp.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint for system status monitoring"""
