@@ -27,13 +27,10 @@ if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
     app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Use 'store' schema for all tables
+# SQLAlchemy Engine Options
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 300,
-    'connect_args': {
-        'options': '-csearch_path=store'
-    }
 }
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
@@ -128,83 +125,6 @@ def load_user(user_id):
 
 # Create tables and fix schema
 with app.app_context():
-    try:
-        with db.engine.connect() as conn:
-            # Hacky migration: Force update column length if table exists
-            conn.execute(text("ALTER TABLE store_user ALTER COLUMN password_hash TYPE VARCHAR(255)"))
-            
-            # Add new columns if they don't exist (SQLite/Postgres compatible-ish check would be better but we'll just try/except or use specific commands)
-            # For simplicity in this environment, we'll try to add them and ignore errors if they exist
-            try:
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN image_url VARCHAR(500)"))
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN subtitle VARCHAR(100)"))
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN ban_rate VARCHAR(20) DEFAULT '0%'"))
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN uptime VARCHAR(20) DEFAULT '99.9%'"))
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN hwid_spoofer BOOLEAN DEFAULT TRUE"))
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN server_status VARCHAR(20) DEFAULT 'Online'"))
-                conn.commit()
-                print("Added new columns to store_product")
-            except Exception as e:
-                print(f"Columns might already exist: {e}")
-            
-            # Add is_admin column to store_user
-            try:
-                conn.execute(text("ALTER TABLE store.store_user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
-                conn.commit()
-            except Exception as e:
-                pass
-
-            # Add manual payment columns to orders
-            try:
-                conn.execute(text("ALTER TABLE store.orders ADD COLUMN proof_data VARCHAR(500)"))
-                conn.execute(text("ALTER TABLE store.orders ADD COLUMN proof_type VARCHAR(50)"))
-                conn.commit()
-                print("Added manual payment columns to orders")
-            except Exception:
-                pass
-            
-            # Add version and price_15days columns to store_product
-            try:
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN version VARCHAR(50) DEFAULT 'V1.0.0 STABLE'"))
-                conn.commit()
-                print("Added version column to store_product")
-            except Exception as e:
-                print(f"version column might already exist: {e}")
-            
-            try:
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN price_15days FLOAT"))
-                conn.commit()
-                print("Added price_15days column to store_product")
-            except Exception as e:
-                print(f"price_15days column might already exist: {e}")
-            
-            try:
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN feature_categories TEXT"))
-                conn.commit()
-                print("Added feature_categories column to store_product")
-            except Exception as e:
-                print(f"feature_categories column might already exist: {e}")
-            
-            try:
-                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN product_code VARCHAR(50)"))
-                conn.commit()
-                print("Added product_code column to store_product")
-            except Exception as e:
-                print(f"product_code column might already exist: {e}")
-            
-            # Add discord_id to orders table for Discord verification
-            try:
-                conn.execute(text("ALTER TABLE store.orders ADD COLUMN discord_id VARCHAR(50)"))
-                conn.commit()
-                print("Added discord_id column to orders")
-            except Exception as e:
-                print(f"discord_id column might already exist: {e}")
-                
-            conn.commit()
-            print("Updated schema")
-    except Exception as e:
-        print(f"Schema update skipped (normal if new DB): {e}")
-
     # Create 'store' schema if using PostgreSQL (SQLite ignores schemas)
     try:
         db.session.execute(text('CREATE SCHEMA IF NOT EXISTS store'))
@@ -213,18 +133,71 @@ with app.app_context():
         db.session.rollback()
 
     db.create_all()
+
+    # Run safe column migrations
+    try:
+        with db.engine.connect() as conn:
+            # Add new columns if they don't exist
+            try:
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)"))
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS subtitle VARCHAR(100)"))
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS ban_rate VARCHAR(20) DEFAULT '0%'"))
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS uptime VARCHAR(20) DEFAULT '99.9%'"))
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS hwid_spoofer BOOLEAN DEFAULT TRUE"))
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS server_status VARCHAR(20) DEFAULT 'Online'"))
+                conn.commit()
+            except Exception:
+                pass
+            
+            # Add is_admin column to store_user
+            try:
+                conn.execute(text("ALTER TABLE store.store_user ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE"))
+                conn.commit()
+            except Exception:
+                pass
+
+            # Add manual payment columns to orders
+            try:
+                conn.execute(text("ALTER TABLE store.orders ADD COLUMN IF NOT EXISTS proof_data VARCHAR(500)"))
+                conn.execute(text("ALTER TABLE store.orders ADD COLUMN IF NOT EXISTS proof_type VARCHAR(50)"))
+                conn.commit()
+            except Exception:
+                pass
+            
+            # Add version and price_15days columns to store_product
+            try:
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS version VARCHAR(50) DEFAULT 'V1.0.0 STABLE'"))
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS price_15days FLOAT"))
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS feature_categories TEXT"))
+                conn.execute(text("ALTER TABLE store.store_product ADD COLUMN IF NOT EXISTS product_code VARCHAR(50)"))
+                conn.commit()
+            except Exception:
+                pass
+            
+            # Add discord_id to orders table
+            try:
+                conn.execute(text("ALTER TABLE store.orders ADD COLUMN IF NOT EXISTS discord_id VARCHAR(50)"))
+                conn.commit()
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"Schema migration note: {e}")
+
     # Create default admin if not exists
-    if not StoreUser.query.filter_by(username='admin').first():
-        admin = StoreUser(
-            username='admin',
-            email='admin@zzenith.local',
-            password_hash=generate_password_hash('admin'),
-            is_verified=True,  # Admin is pre-verified
-            is_admin=True  # Mark as admin
-        )
-        db.session.add(admin)
-        db.session.commit()
-        print("Created default admin user (admin/admin) - email: admin@zzenith.local")
+    try:
+        if not StoreUser.query.filter_by(username='admin').first():
+            admin = StoreUser(
+                username='admin',
+                email='admin@zzenith.local',
+                password_hash=generate_password_hash('admin'),
+                is_verified=True,
+                is_admin=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Created default admin user (admin/admin) - email: admin@zzenith.local")
+    except Exception as e:
+        print(f"Admin user init note: {e}")
 
 # --- Routes ---
 
