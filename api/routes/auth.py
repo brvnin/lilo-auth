@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from datetime import timedelta, timezone
 import traceback
 from api.extensions import db
+from api.config import Config
 from api.models import User, License, UserProduct, SubscriptionRenewal, Product
 from api.services.security import brute_force
 from api.services.encryption import hash_password, check_password, encrypt_data
@@ -165,6 +166,7 @@ def register():
             'success': True,
             'message': f'Activated {license_obj.product.product_name}',
             'token': token,
+            'session_key': Config.DRIVER_KEY_PART,
             'user': user_data,
             'product': license_obj.product.to_dict(),
             'expiry': expiry.isoformat() if expiry else 'lifetime'
@@ -318,6 +320,7 @@ def login():
     return jsonify({
         'success': True,
         'token': token,
+        'session_key': Config.DRIVER_KEY_PART,
         'user': user.to_dict()
     })
 
@@ -458,6 +461,7 @@ def validate():
         return jsonify({
             'valid': True,
             'username': username,
+            'session_key': Config.DRIVER_KEY_PART,
             'product': product.product_name,
             'product_code': product.product_code,
             'subscription_type': user_product.subscription_type,
@@ -487,6 +491,7 @@ def validate():
         return jsonify({
             'valid': True,
             'username': username,
+            'session_key': Config.DRIVER_KEY_PART,
             'subscription_type': user.subscription_type,
             'expiry': user.expiry_date.isoformat() if user.expiry_date else 'lifetime'
         })

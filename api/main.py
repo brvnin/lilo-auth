@@ -58,12 +58,19 @@ def create_app(config_class=Config):
     
     # Initialize DB and Migrations within context
     with app.app_context():
-        # Create 'api' schema if using PostgreSQL (SQLite ignores schemas)
-        try:
-            db.session.execute(db.text('CREATE SCHEMA IF NOT EXISTS api'))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+        # Create 'api' schema if using PostgreSQL (or attach in SQLite)
+        if db.engine.url.drivername.startswith('sqlite'):
+            try:
+                db.session.execute(db.text("ATTACH DATABASE 'auth.db' AS api"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        else:
+            try:
+                db.session.execute(db.text('CREATE SCHEMA IF NOT EXISTS api'))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
         # Create tables if not exist
         db.create_all()

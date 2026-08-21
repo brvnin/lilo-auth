@@ -7,7 +7,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
     SESSION_SECRET = os.environ.get('SESSION_SECRET', secrets.token_hex(32))
     ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', Fernet.generate_key().decode())
-    HMAC_SECRET = os.environ.get('HMAC_SECRET', secrets.token_hex(32))
+    HMAC_SECRET = os.environ.get('HMAC_SECRET', 'MEU_SEGREDO_SUPER_SEGURO_2026')
+    DRIVER_KEY_PART = os.environ.get('DRIVER_KEY_PART', '4B79A3F10E2D8C659B1A7E3F8C0D4E2A')
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB limit
     
     # Upload Folder
