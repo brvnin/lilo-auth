@@ -1,13 +1,16 @@
 from flask import Blueprint, request, jsonify
 from datetime import timedelta, timezone
 import traceback
+import hmac
+import hashlib
+import time
 from api.extensions import db
 from api.config import Config
 from api.models import User, License, UserProduct, SubscriptionRenewal, Product
 from api.services.security import brute_force
 from api.services.encryption import hash_password, check_password, encrypt_data
 from api.services.validation import verify_token, hash_hwid, log_login_attempt, log_validation, check_suspicious_validation, create_session_token
-from api.utils.decorators import rate_limit
+from api.utils.decorators import rate_limit, token_required
 from api.utils.helpers import utc_now
 
 auth_bp = Blueprint('auth', __name__)
@@ -495,3 +498,59 @@ def validate():
             'subscription_type': user.subscription_type,
             'expiry': user.expiry_date.isoformat() if user.expiry_date else 'lifetime'
         })
+
+# ── In-memory nonce store for replay protection ──
+_used_action_nonces = {}
+
+@auth_bp.route('/api/action-token', methods=['POST'])
+@token_required
+def request_action_token(current_user):
+    """
+    Issue a single-use action token tied to a nonce and timestamp.
+    Ensures that spoofer dashboard buttons cannot be triggered offline or on banned accounts.
+    """
+    global _used_action_nonces
+    now = time.time()
+    
+    # Cleanup expired nonces (> 60s)
+    _used_action_nonces = {n: exp for n, exp in _used_action_nonces.items() if exp > now}
+    
+    if current_user.is_banned:
+        return jsonify({'error': f'Account banned: {current_user.ban_reason}'}), 403
+        
+    if not current_user.is_active:
+        return jsonify({'error': 'Account is disabled'}), 403
+        
+    data = request.json or {}
+    action = data.get('action', '').strip()
+    nonce = data.get('nonce', '').strip()
+    
+    allowed_actions = {'clean_hardware', 'clean_steam', 'clean_discord', 'kernel_spoof'}
+    if action not in allowed_actions:
+        return jsonify({'error': 'Invalid action requested'}), 400
+        
+    if not nonce or len(nonce) < 8 or len(nonce) > 64:
+        return jsonify({'error': 'Invalid or missing nonce'}), 400
+        
+    if nonce in _used_action_nonces:
+        return jsonify({'error': 'Nonce already used'}), 409
+        
+    # Mark nonce as used with 30s TTL
+    _used_action_nonces[nonce] = now + 30.0
+    
+    expires_at = int((now + 15.0) * 1000)
+    payload = f"{nonce}:{action}:{expires_at}:{current_user.username}"
+    action_token = hmac.new(
+        Config.SECRET_KEY.encode(),
+        payload.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    print(f"DEBUG: Action token generated for user={current_user.username} action={action}")
+    
+    return jsonify({
+        'success': True,
+        'action_token': action_token,
+        'expires_at': expires_at
+    }), 200
+
