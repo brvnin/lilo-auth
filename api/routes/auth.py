@@ -189,9 +189,10 @@ def login():
     password = data.get('password', '').strip()
     hwid_raw = data.get('hwid', '')
     hwid = hash_hwid(hwid_raw)
+    product_code = data.get('product_code', '').strip().upper()
     ip_address = request.remote_addr
     
-    print(f"DEBUG: Login attempt for user={username} hwid={data.get('hwid')} ip={ip_address}")
+    print(f"DEBUG: Login attempt for user={username} product={product_code} hwid={data.get('hwid')} ip={ip_address}")
     
     # ✅ CHECK BRUTE FORCE FIRST
     is_blocked, block_reason, retry_after = brute_force.check_and_record(username, ip_address, success=False)
@@ -243,71 +244,97 @@ def login():
             user.hwid_encrypted = encrypt_data(hwid_raw)
     
     # Check subscriptions
-    user_products = UserProduct.query.filter_by(user_id=user.id).all()
-    
-    if user_products:
-        disabled_products = []
-        expired_products = []
-        active_products = []
+    if product_code:
+        product = Product.query.filter_by(product_code=product_code).first()
+        if not product:
+            log_login_attempt(username, ip_address, False, f'Product {product_code} not found')
+            print(f"DEBUG: Login failed for user={username}: Product {product_code} not found")
+            return jsonify({'error': f'Product code {product_code} not found'}), 404
+            
+        if not product.is_active:
+            log_login_attempt(username, ip_address, False, f'Product {product_code} disabled')
+            print(f"DEBUG: Login failed for user={username}: Product {product_code} disabled")
+            return jsonify({'error': f'{product.product_name} is currently disabled. Access temporarily suspended.'}), 403
+            
+        user_product = UserProduct.query.filter_by(
+            user_id=user.id,
+            product_id=product.id
+        ).first()
         
-        for up in user_products:
-            # FIX BUG 1 REMINDER: Note that login just checks is_active.
-            # We fix the admin extension logic in admin routes, not here.
-            # Here we just trust the DB state.
+        if not user_product or not user_product.is_active:
+            log_login_attempt(username, ip_address, False, f'No subscription for product {product_code}')
+            print(f"DEBUG: Login failed for user={username}: No subscription for product {product_code}")
+            return jsonify({'error': f'No active subscription found for {product.product_name}'}), 403
             
-            if not up.is_active:
-                disabled_products.append(up.product.product_name if up.product else 'Unknown')
-                continue
-            
-            if not up.product or not up.product.is_active:
-                disabled_products.append(up.product.product_name if up.product else 'Unknown')
-                continue
-            
-            if up.expiry_date:
-                if not up.frozen_at:
-                    expiry = up.expiry_date
-                    if expiry.tzinfo is None:
-                        expiry = expiry.replace(tzinfo=timezone.utc)
-                    
-                    if utc_now() > expiry:
-                        expired_products.append(up.product.product_name)
-                        continue
-            
-            active_products.append(up.product.product_name)
-        
-        if not active_products:
-            error_parts = []
-            if disabled_products:
-                error_parts.append(f"Disabled: {', '.join(disabled_products)}")
-            if expired_products:
-                error_parts.append(f"Expired: {', '.join(expired_products)}")
-            
-            error_message = "No active subscriptions. " + " | ".join(error_parts) if error_parts else "All subscriptions are inactive."
-            log_login_attempt(username, ip_address, False, 'No active product subscriptions')
-            print(f"DEBUG: Login failed for user={username}: No active subscriptions")
-            return jsonify({
-                'error': error_message,
-                'details': {
-                    'disabled_products': disabled_products,
-                    'expired_products': expired_products
-                }
-            }), 403
+        if user_product.expiry_date and not user_product.frozen_at:
+            expiry = user_product.expiry_date
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+            if utc_now() > expiry:
+                log_login_attempt(username, ip_address, False, f'Subscription expired for {product_code}')
+                print(f"DEBUG: Login failed for user={username}: Subscription expired for {product_code}")
+                return jsonify({'error': f'Subscription for {product.product_name} has expired'}), 403
     else:
-        # Legacy check or global subscription
-        if user.expiry_date:
-            expiry_date = user.expiry_date
-            if expiry_date.tzinfo is None:
-                expiry_date = expiry_date.replace(tzinfo=timezone.utc)
+        user_products = UserProduct.query.filter_by(user_id=user.id).all()
+        
+        if user_products:
+            disabled_products = []
+            expired_products = []
+            active_products = []
             
-            if utc_now() > expiry_date:
-                log_login_attempt(username, ip_address, False, 'Subscription expired')
-                print(f"DEBUG: Login failed for user={username}: Legacy subscription expired")
-                return jsonify({'error': 'Subscription expired'}), 403
+            for up in user_products:
+                if not up.is_active:
+                    disabled_products.append(up.product.product_name if up.product else 'Unknown')
+                    continue
+                
+                if not up.product or not up.product.is_active:
+                    disabled_products.append(up.product.product_name if up.product else 'Unknown')
+                    continue
+                
+                if up.expiry_date:
+                    if not up.frozen_at:
+                        expiry = up.expiry_date
+                        if expiry.tzinfo is None:
+                            expiry = expiry.replace(tzinfo=timezone.utc)
+                        
+                        if utc_now() > expiry:
+                            expired_products.append(up.product.product_name)
+                            continue
+                
+                active_products.append(up.product.product_name)
+            
+            if not active_products:
+                error_parts = []
+                if disabled_products:
+                    error_parts.append(f"Disabled: {', '.join(disabled_products)}")
+                if expired_products:
+                    error_parts.append(f"Expired: {', '.join(expired_products)}")
+                
+                error_message = "No active subscriptions. " + " | ".join(error_parts) if error_parts else "All subscriptions are inactive."
+                log_login_attempt(username, ip_address, False, 'No active product subscriptions')
+                print(f"DEBUG: Login failed for user={username}: No active subscriptions")
+                return jsonify({
+                    'error': error_message,
+                    'details': {
+                        'disabled_products': disabled_products,
+                        'expired_products': expired_products
+                    }
+                }), 403
         else:
-            # If no products and no global expiry, block login
-            log_login_attempt(username, ip_address, False, 'No active subscription')
-            print(f"DEBUG: Login failed for user={username}: No active subscription (Legacy)")
-            return jsonify({'error': 'No active subscription found'}), 403
+            # Legacy check or global subscription
+            if user.expiry_date:
+                expiry_date = user.expiry_date
+                if expiry_date.tzinfo is None:
+                    expiry_date = expiry_date.replace(tzinfo=timezone.utc)
+                
+                if utc_now() > expiry_date:
+                    log_login_attempt(username, ip_address, False, 'Subscription expired')
+                    print(f"DEBUG: Login failed for user={username}: Legacy subscription expired")
+                    return jsonify({'error': 'Subscription expired'}), 403
+            else:
+                log_login_attempt(username, ip_address, False, 'No active subscription')
+                print(f"DEBUG: Login failed for user={username}: No active subscription (Legacy)")
+                return jsonify({'error': 'No active subscription found'}), 403
     
     # ✅ SUCCESS - RESET BRUTE FORCE COUNTER
     brute_force.check_and_record(username, ip_address, success=True)
