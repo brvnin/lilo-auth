@@ -19,14 +19,18 @@ def verify_loader_request():
     signature = request.headers.get('X-Loader-Signature')
     
     if not timestamp or not signature:
+        print(f"DEBUG [LOADER_SECURITY]: Missing headers! (Timestamp={bool(timestamp)}, Signature={bool(signature)}) from IP={request.remote_addr}")
         return False
         
-    # Verify timestamp (prevent replay attacks - 60s window)
+    # Verify timestamp (prevent replay attacks - 300s / 5min window)
     try:
         ts = float(timestamp)
-        if abs(time.time() - ts) > 60:
+        drift = abs(time.time() - ts)
+        if drift > 300:
+            print(f"DEBUG [LOADER_SECURITY]: Time drift too large ({drift:.1f}s > 300s). Server time={time.time()}, Client ts={ts}, IP={request.remote_addr}")
             return False
     except ValueError:
+        print(f"DEBUG [LOADER_SECURITY]: Invalid timestamp '{timestamp}' from IP={request.remote_addr}")
         return False
         
     # Reconstruct signature
@@ -41,7 +45,14 @@ def verify_loader_request():
         hashlib.sha256
     ).hexdigest()
     
-    return hmac.compare_digest(signature, expected_signature)
+    if not hmac.compare_digest(signature, expected_signature):
+        print(f"DEBUG [LOADER_SECURITY]: Signature mismatch from IP={request.remote_addr}!")
+        print(f"DEBUG [LOADER_SECURITY]: Expected: {expected_signature}")
+        print(f"DEBUG [LOADER_SECURITY]: Received: {signature}")
+        print(f"DEBUG [LOADER_SECURITY]: Payload: '{payload}'")
+        return False
+        
+    return True
 
 def hash_hwid(hwid_data: str) -> str:
     """Hash HWID and format as HWID-XXXX-XXXX-XXXX-XXXX"""
