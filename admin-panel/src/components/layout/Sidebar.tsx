@@ -5,10 +5,8 @@ import {
     Key,
     Users,
     Package,
-    Settings,
     LogOut,
-    ShieldCheck,
-    Bot
+    ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -21,8 +19,6 @@ export function Sidebar() {
         { href: '/licenses', label: 'Licenses', icon: Key },
         { href: '/users', label: 'Users', icon: Users },
         { href: '/products', label: 'Products', icon: Package },
-        { href: '/system', label: 'System', icon: Settings },
-        { href: '/bot', label: 'Bot Control', icon: Bot },
     ];
 
     return (
