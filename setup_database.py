@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database Setup & Migration Script for Auth System + Store
+Database Setup & Migration Script for Lilo Auth + Store
 Supports: Neon.tech, Supabase, Aiven, Render Postgres, Local Postgres, SQLite.
 """
 
@@ -17,9 +17,19 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, os.path.join(BASE_DIR, 'store', 'backend'))
 
+# Load .env if present
+env_file = os.path.join(BASE_DIR, '.env')
+if os.path.exists(env_file):
+    with open(env_file, 'r', encoding='utf-8-sig') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                k, v = line.split('=', 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
 def main():
     print("=" * 65)
-    print("       AUTH SYSTEM & STORE - DATABASE SETUP & MIGRATION")
+    print("        LILO AUTH & STORE - DATABASE SETUP & MIGRATION")
     print("=" * 65)
 
     # 1. Get Database URL
@@ -104,7 +114,7 @@ def main():
             if not admin:
                 default_admin = StoreUser(
                     username='admin',
-                    email='admin@zzenith.local',
+                    email='admin@liloauth.local',
                     password_hash=generate_password_hash('admin'),
                     is_verified=True,
                     is_admin=True

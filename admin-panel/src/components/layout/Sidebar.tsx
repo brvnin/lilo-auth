@@ -33,7 +33,7 @@ export function Sidebar() {
                         <ShieldCheck className="h-6 w-6 text-primary" />
                     </div>
                     <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                        ZZENITH
+                        LILO AUTH
                     </span>
                 </div>
             </div>

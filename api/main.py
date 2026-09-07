@@ -85,7 +85,7 @@ def create_app(config_class=Config):
            print(f"Cleanup warning: {e}")
         
         print("=" * 60)
-        print("SECURE AUTH SYSTEM v3.1.0 - INITIALIZED (MODULAR)")
+        print("LILO AUTH v3.1.0 - INITIALIZED (MODULAR)")
         print("=" * 60)
         print(f"Database initialized")
         print(f"Admin Username: {app.config['ADMIN_USERNAME']}")

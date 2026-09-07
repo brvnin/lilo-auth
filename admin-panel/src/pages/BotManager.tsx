@@ -193,7 +193,7 @@ export default function BotManager() {
                         Bot Control Center v2.0
                     </h2>
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                        <Settings className="h-3 w-3" /> Unified Manager for Zzenith Discord Service
+                        <Settings className="h-3 w-3" /> Unified Manager for Lilo Auth Discord Service
                     </p>
                 </div>
                 <div className="flex items-center gap-3">

@@ -32,10 +32,10 @@ export default function Login() {
                         </div>
                     </div>
                     <CardTitle className="text-2xl font-bold tracking-tight bg-gradient-to-br from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                        Admin Portal
+                        Lilo Auth
                     </CardTitle>
                     <CardDescription>
-                        Enter your secure credentials to access the system
+                        Enter your secure credentials to access Lilo Auth
                     </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>

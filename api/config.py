@@ -2,6 +2,16 @@ import os
 import secrets
 from cryptography.fernet import Fernet
 
+# Load .env if present
+_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+if os.path.exists(_env_path):
+    with open(_env_path, 'r', encoding='utf-8-sig') as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 class Config:
     # Basic Config
     SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
