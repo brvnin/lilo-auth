@@ -30,17 +30,6 @@ services:
         sync: false
 
   # ─────────────────────────────────────────
-  # Scheduled job: keep the API alive
-  # ─────────────────────────────────────────
-  - type: cron
-    name: lilo-auth-keepalive
-    env: bash
-    region: oregon
-    plan: free
-    schedule: "*/5 * * * *"
-    command: "curl -fsS https://lilo-auth-api.onrender.com/api/healthz >/dev/null 2>&1"
-
-  # ─────────────────────────────────────────
   # Service 2: Store (Flask backend + React frontend via Docker)
   # ─────────────────────────────────────────
   - type: web
