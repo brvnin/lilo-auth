@@ -27,7 +27,7 @@ services:
       - key: ALLOWED_ORIGINS
         value: "*"
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_TLoNgYCi2ts0@ep-polished-water-a56vkn3b-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+        sync: false
 
   # ─────────────────────────────────────────
   # Scheduled job: keep the API alive
@@ -62,4 +62,4 @@ services:
       - key: ADMIN_PASSWORD_HASH
         value: "$2b$12$g2WZxILhYpt4aBQpa8z8r.TvlEIIdQ5Sg/PhHcFL23SlePtKNCJue"
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_TLoNgYCi2ts0@ep-polished-water-a56vkn3b-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+        sync: false
